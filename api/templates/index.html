@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Diabetes Tracker — Risk Predictor</title>
+  <style>
+    :root {
+      --bg:       #f8fafc;
+      --surface:  #ffffff;
+      --border:   #e2e8f0;
+      --text:     #1e293b;
+      --muted:    #64748b;
+      --accent:   #2563eb;
+      --accent-h: #1d4ed8;
+      --low:      #16a34a;
+      --mod:      #d97706;
+      --high:     #dc2626;
+      --radius:   8px;
+      --shadow:   0 1px 4px rgba(0,0,0,.08);
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg:      #0f172a;
+        --surface: #1e293b;
+        --border:  #334155;
+        --text:    #f1f5f9;
+        --muted:   #94a3b8;
+        --accent:  #60a5fa;
+        --accent-h:#3b82f6;
+      }
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 1.5rem 1rem;
+    }
+    header {
+      max-width: 820px;
+      margin: 0 auto 1.5rem;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 1rem;
+    }
+    header h1 { font-size: 1.6rem; font-weight: 700; }
+    header p  { color: var(--muted); font-size: .88rem; margin-top: .3rem; }
+    .notice {
+      background: #fef9c3;
+      border: 1px solid #fde047;
+      color: #713f12;
+      border-radius: var(--radius);
+      padding: .6rem 1rem;
+      font-size: .82rem;
+      max-width: 820px;
+      margin: 0 auto 1.25rem;
+    }
+    .layout {
+      max-width: 820px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.25rem;
+    }
+    @media (max-width: 600px) { .layout { grid-template-columns: 1fr; } }
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.25rem;
+      box-shadow: var(--shadow);
+    }
+    .card h2 { font-size: 1rem; font-weight: 600; margin-bottom: 1rem; }
+    .field { margin-bottom: .85rem; }
+    .field label {
+      display: block;
+      font-size: .8rem;
+      font-weight: 500;
+      color: var(--muted);
+      margin-bottom: .3rem;
+    }
+    .field input {
+      width: 100%;
+      padding: .45rem .7rem;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--bg);
+      color: var(--text);
+      font-size: .9rem;
+    }
+    .field input:focus {
+      outline: 2px solid var(--accent);
+      outline-offset: 1px;
+    }
+    .field .hint {
+      font-size: .73rem;
+      color: var(--muted);
+      margin-top: .2rem;
+    }
+    .btn {
+      display: inline-block;
+      width: 100%;
+      padding: .6rem;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: var(--radius);
+      font-size: .95rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background .15s;
+      margin-top: .5rem;
+    }
+    .btn:hover { background: var(--accent-h); }
+    .btn:disabled { opacity: .6; cursor: default; }
+    #result { grid-column: 1 / -1; }
+    .result-inner {
+      display: flex;
+      align-items: center;
+      gap: 1.25rem;
+      flex-wrap: wrap;
+    }
+    .risk-badge {
+      font-size: 2rem;
+      font-weight: 800;
+      padding: .4rem 1rem;
+      border-radius: 6px;
+      color: #fff;
+      white-space: nowrap;
+    }
+    .risk-Low      { background: var(--low); }
+    .risk-Moderate { background: var(--mod); }
+    .risk-High     { background: var(--high); }
+    .result-details p { font-size: .88rem; color: var(--muted); margin: .15rem 0; }
+    .result-details strong { color: var(--text); }
+    .meter-wrap { width: 100%; margin-top: .75rem; }
+    .meter-label { font-size: .8rem; color: var(--muted); margin-bottom: .3rem; }
+    .meter-bar {
+      height: 10px;
+      border-radius: 99px;
+      background: var(--border);
+      overflow: hidden;
+    }
+    .meter-fill {
+      height: 100%;
+      border-radius: 99px;
+      transition: width .5s ease;
+    }
+    .disclaimer {
+      font-size: .75rem;
+      color: var(--muted);
+      margin-top: .75rem;
+      padding-top: .75rem;
+      border-top: 1px solid var(--border);
+    }
+    .model-chip {
+      display: inline-block;
+      font-size: .72rem;
+      background: var(--border);
+      color: var(--muted);
+      border-radius: 4px;
+      padding: .1rem .4rem;
+      margin-left: .5rem;
+    }
+    .log-table { width: 100%; border-collapse: collapse; font-size: .8rem; }
+    .log-table th, .log-table td {
+      text-align: left;
+      padding: .4rem .5rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .log-table th { color: var(--muted); font-weight: 500; }
+    .pill {
+      display: inline-block;
+      padding: .1rem .4rem;
+      border-radius: 4px;
+      font-size: .72rem;
+      font-weight: 600;
+      color: #fff;
+    }
+    .pill-Low      { background: var(--low); }
+    .pill-Moderate { background: var(--mod); }
+    .pill-High     { background: var(--high); }
+    .spinner {
+      display: inline-block;
+      width: 14px; height: 14px;
+      border: 2px solid rgba(255,255,255,.4);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin .6s linear infinite;
+      vertical-align: middle;
+      margin-right: .4rem;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    #error-box {
+      background: #fee2e2;
+      border: 1px solid #fca5a5;
+      color: #991b1b;
+      border-radius: var(--radius);
+      padding: .6rem 1rem;
+      font-size: .85rem;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Diabetes Tracker
+    <span class="model-chip" id="model-chip">
+      {{ model_info.get('name', 'DiabetesPredictor') }}
+      v{{ model_info.get('version', '?') }}
+      &middot; {{ model_info.get('stage', 'Production') }}
+    </span>
+  </h1>
+  <p>Educational MLOps demonstration — not a clinical diagnostic tool.</p>
+</header>
+
+<div class="notice">
+  &#9888;&#65039; This tool is for learning about ML pipelines only.
+  It does <strong>not</strong> provide medical advice. Always consult a qualified healthcare professional.
+</div>
+
+<div class="layout">
+
+  <!-- Left column: input form -->
+  <div class="card">
+    <h2>Patient Features</h2>
+    <form id="predict-form">
+      {% for col in feature_cols %}
+      <div class="field">
+        <label for="{{ col }}">{{ col }}</label>
+        <input type="number" id="{{ col }}" name="{{ col }}" step="any"
+               placeholder="{{ feature_descriptions[col].split('(')[1].rstrip(')') if '(' in feature_descriptions[col] else '' }}"
+               required />
+        <div class="hint">{{ feature_descriptions[col] }}</div>
+      </div>
+      {% endfor %}
+      <button class="btn" type="submit" id="submit-btn">Run Prediction</button>
+    </form>
+  </div>
+
+  <!-- Right column: result + log -->
+  <div style="display:flex; flex-direction:column; gap:1.25rem;">
+
+    <div class="card" id="result" style="display:none;">
+      <h2>Prediction Result</h2>
+      <div id="error-box"></div>
+      <div class="result-inner" id="result-inner"></div>
+      <div class="meter-wrap" id="meter-wrap" style="display:none;">
+        <div class="meter-label">Probability of Diabetes Risk</div>
+        <div class="meter-bar">
+          <div class="meter-fill" id="meter-fill"></div>
+        </div>
+      </div>
+      <p class="disclaimer" id="disclaimer-text"></p>
+    </div>
+
+    <div class="card">
+      <h2>Recent Predictions</h2>
+      <div id="log-container" style="overflow-x:auto;">
+        <table class="log-table">
+          <thead>
+            <tr>
+              <th>Time</th>
+              <th>Glucose</th>
+              <th>BMI</th>
+              <th>Risk</th>
+              <th>Prob</th>
+              <th>v</th>
+            </tr>
+          </thead>
+          <tbody id="log-body">
+            <tr><td colspan="6" style="color:var(--muted)">No predictions yet.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  const form   = document.getElementById("predict-form");
+  const btn    = document.getElementById("submit-btn");
+  const result = document.getElementById("result");
+  const errBox = document.getElementById("error-box");
+
+  const riskColors = {
+    Low:      "#16a34a",
+    Moderate: "#d97706",
+    High:     "#dc2626",
+  };
+
+  function renderResult(data) {
+    errBox.style.display = "none";
+    const ri = document.getElementById("result-inner");
+
+    const badge = `<div class="risk-badge risk-${data.risk_level}">${data.risk_level} Risk</div>`;
+    const details = `
+      <div class="result-details">
+        <p><strong>${data.prediction_label}</strong></p>
+        <p>Probability: <strong>${(data.probability * 100).toFixed(1)}%</strong></p>
+        <p>Model version: <strong>${data.model_version}</strong></p>
+      </div>`;
+
+    ri.innerHTML = badge + details;
+
+    const mw = document.getElementById("meter-wrap");
+    const mf = document.getElementById("meter-fill");
+    mw.style.display = "block";
+    mf.style.width   = (data.probability * 100) + "%";
+    mf.style.background = riskColors[data.risk_level] || "#64748b";
+
+    document.getElementById("disclaimer-text").textContent = data.disclaimer;
+    result.style.display = "block";
+  }
+
+  function showError(msg) {
+    errBox.textContent  = msg;
+    errBox.style.display = "block";
+    result.style.display = "block";
+    document.getElementById("result-inner").innerHTML = "";
+    document.getElementById("meter-wrap").style.display = "none";
+  }
+
+  async function fetchLog() {
+    try {
+      const res  = await fetch("/predictions");
+      const rows = await res.json();
+      const body = document.getElementById("log-body");
+      if (!Array.isArray(rows) || rows.length === 0) return;
+      body.innerHTML = rows.map(r => {
+        const t = new Date(r.timestamp).toLocaleTimeString();
+        return `<tr>
+          <td>${t}</td>
+          <td>${r.input?.Glucose ?? "—"}</td>
+          <td>${r.input?.BMI ?? "—"}</td>
+          <td><span class="pill pill-${r.risk_level}">${r.risk_level}</span></td>
+          <td>${(r.probability * 100).toFixed(1)}%</td>
+          <td>${r.model_version}</td>
+        </tr>`;
+      }).join("");
+    } catch (_) {}
+  }
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> Predicting…';
+
+    const payload = {};
+    const inputs = form.querySelectorAll("input[name]");
+    inputs.forEach(i => { payload[i.name] = parseFloat(i.value); });
+
+    try {
+      const res  = await fetch("/predict", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+
+      if (res.ok) {
+        renderResult(data);
+        fetchLog();
+      } else {
+        showError(data.error || "Prediction failed.");
+      }
+    } catch (err) {
+      showError("Could not reach the API. Is the server running?");
+    } finally {
+      btn.disabled = false;
+      btn.textContent = "Run Prediction";
+    }
+  });
+
+  fetchLog();
+  setInterval(fetchLog, 15000);
+</script>
+</body>
+</html>

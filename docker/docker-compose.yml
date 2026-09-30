@@ -1,0 +1,49 @@
+version: "3.9"
+
+services:
+  mlflow:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.mlflow
+    container_name: diabetes-mlflow
+    ports:
+      - "5000:5000"
+    volumes:
+      - mlflow_data:/mlflow
+    networks:
+      - diabetes-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  api:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: diabetes-api
+    ports:
+      - "5001:5001"
+    environment:
+      - VERVE_API_KEY=${VERVE_API_KEY:-}
+      - MLFLOW_TRACKING_URI=http://mlflow:5000
+    volumes:
+      - ../models:/app/models
+    depends_on:
+      mlflow:
+        condition: service_healthy
+    networks:
+      - diabetes-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  mlflow_data:
+
+networks:
+  diabetes-net:
+    driver: bridge

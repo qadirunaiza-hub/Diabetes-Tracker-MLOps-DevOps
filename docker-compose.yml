@@ -1,0 +1,70 @@
+# docker-compose.yml
+# ------------------
+# Defines two services:
+#   mlflow  — experiment tracking UI (port 5002)
+#   api     — Flask prediction API   (port 5001)
+#
+# Both services share the same ./mlruns volume so the API can load
+# the registered Production model that was logged by the training pipeline.
+#
+# Usage:
+#   docker compose up --build          # first time
+#   docker compose up                  # subsequent runs
+#   docker compose down                # stop and remove containers
+
+version: "3.9"
+
+services:
+
+  # ── MLflow Tracking Server ─────────────────────────────────────────────── #
+  mlflow:
+    image: python:3.11-slim
+    container_name: diabetes-mlflow
+    working_dir: /mlflow
+    command: >
+      sh -c "pip install mlflow --quiet &&
+             mlflow server
+               --backend-store-uri sqlite:////mlflow/mlflow.db
+               --default-artifact-root /mlflow/artifacts
+               --host 0.0.0.0
+               --port 5002"
+    ports:
+      - "5002:5002"
+    volumes:
+      - ./mlflow.db:/mlflow/mlflow.db
+      - ./mlruns:/mlflow/artifacts
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5002/')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ── Flask Prediction API ───────────────────────────────────────────────── #
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: diabetes-api
+    ports:
+      - "5001:5001"
+    environment:
+      MLFLOW_TRACKING_URI: sqlite:////app/mlflow.db
+      MODEL_NAME: DiabetesPredictor
+      MODEL_ALIAS: champion
+      FLASK_PORT: "5001"
+      FLASK_ENV: production
+      LOG_LEVEL: INFO
+    volumes:
+      # Mount MLflow DB and artifact store so the API reads the trained model
+      - ./mlflow.db:/app/mlflow.db:ro
+      - ./mlruns:/app/mlruns:ro
+      # Mount models (scaler, imputer) and logs (SQLite DB) as writable
+      - ./models:/app/models
+      - ./logs:/app/logs
+    depends_on:
+      - mlflow
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5001/health')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3

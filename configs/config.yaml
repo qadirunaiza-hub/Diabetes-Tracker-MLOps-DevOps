@@ -1,0 +1,50 @@
+project:
+  name: diabetes-tracker
+  version: "1.0.0"
+  description: ML-based diabetes prediction and monitoring system
+
+data:
+  raw_path: data/raw/diabetes.csv
+  processed_path: data/processed/
+  test_size: 0.2
+  random_state: 42
+  target_column: Outcome
+  feature_columns:
+    - Pregnancies
+    - Glucose
+    - BloodPressure
+    - SkinThickness
+    - Insulin
+    - BMI
+    - DiabetesPedigreeFunction
+    - Age
+
+model:
+  algorithm: xgboost  # options: xgboost | random_forest | logistic_regression
+  params:
+    n_estimators: 200
+    max_depth: 6
+    learning_rate: 0.1
+    subsample: 0.8
+    colsample_bytree: 0.8
+    random_state: 42
+  model_path: models/
+
+mlflow:
+  tracking_uri: http://localhost:5000
+  experiment_name: diabetes-prediction
+  model_name: diabetes-classifier
+
+api:
+  host: 0.0.0.0
+  port: 5001
+  debug: false
+  model_uri: models:/diabetes-classifier/Production
+
+monitoring:
+  verve:
+    enabled: true
+    endpoint: http://verve:8080/api/events
+    api_key: ${VERVE_API_KEY}
+  alert_threshold: 0.7
+  batch_size: 100

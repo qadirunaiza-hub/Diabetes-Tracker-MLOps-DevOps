@@ -1,0 +1,37 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+htmlcov/
+.coverage
+
+# Environment
+.env
+
+# MLflow — generated at runtime, not committed
+mlruns/
+mlflow.db
+
+# Trained model artifacts and preprocessors
+models/*.joblib
+models/*.pkl
+
+# Prediction audit log (SQLite DB)
+logs/*.db
+
+# Generated dataset (reproducible via generate_data.py)
+data/diabetes.csv
+data/processed/
+data/raw/*.csv
+
+# Generated plots (reproducible via run_pipeline.py)
+docs/plots/*.png
+
+# OS / IDE
+.DS_Store
+.idea/
+.vscode/
+*.swp
